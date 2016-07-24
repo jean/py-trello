@@ -5,6 +5,7 @@ from datetime import datetime
 from trello.compat import force_str
 from trello.checklist import Checklist
 from trello.label import Label
+from zope.deprecation import deprecate
 
 import datetime
 
@@ -214,20 +215,28 @@ class Card(object):
         return self.fetch_attachments(force=True)
 
     def fetch_actions(self, action_filter='createCard', since=None, before=None):
-        """
-        Fetch actions for this card can give more argv to action_filter,
-        split for ',' json_obj is list
+        """Returns (and sets) a (filtered) list of actions.
+
+        Args:
+            action_filter: 'all' or a comma-separated list; see
+                https://developers.trello.com/advanced-reference/card#get-1-cards-card-id-or-shortlink-actions
+            since: A date, 'null' or 'lastView'
+            before: A date, or 'null'
+
+        Returns:
+            list of dicts based on returned JSON
         """
         json_obj = self.client.fetch_json(
             '/cards/' + self.id + '/actions',
             query_params={'filter': action_filter, "since": since, "before": before})
-        self.actions = json_obj
 
+        self.actions = json_obj
+        return self.actions
+
+
+    # This doesn't add anything useful to fetch_actions, let's deprecate it.
+    @deprecate("Just call fetch_actions(filter) directly.")
     def attriExp(self, multiple):
-        """
-            Provides the option to explore what comes from trello
-            :multiple is one of the attributes of GET /1/cards/[card id or shortlink]/actions
-        """
         self.fetch_actions(multiple)
         return self.actions
 
