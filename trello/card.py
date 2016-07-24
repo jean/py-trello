@@ -412,36 +412,42 @@ class Card(object):
 
     @property
     def created_date(self):
-        """Will return the creation date of the card.
+        """Return the creation date of the card by parsing the card id.
 
-        WARNING: if the card was create via convertion of a checklist item
-                it fails. attriExp('convertToCardFromCheckItem') allows to
-                test for the condition.
-        """
-        self.fetch_actions()
-        date_str = self.actions[0]['date']
-        return dateparser.parse(date_str)
+        This requires no network request, and getting created_date from actions
+        may fail if the card has more than 1000 actions.
 
-    # backwards compatibility alias; TODO: deprecation message
-    create_date = created_date
+        This date is not identical to the date of the corresponding action.
 
-    @property
-    def card_created_date(self):
-        """Will return the creation date of the card.
-
-        NOTE: This will return the date the card was created, even if it
-        was created on another board. The created_date() above actually just
-        returns the first activity and has the issue described in the warning.
-
-        The first 8 characters of the card id is a hexadecimal number.
-        Converted to a decimal from hexadecimal, the timestamp is an Unix
-        timestamp (the number of seconds that have elapsed since January 1,
-        1970 midnight UTC. See
+        Because Trello uses MongoDB, we can parse the date from the card id.
+        See
         http://help.trello.com/article/759-getting-the-time-a-card-or-board-was-created
         """
         unix_time = int(self.id[:8], 16)
 
         return datetime.fromtimestamp(unix_time)
+
+    @deprecate("Renamed to created_date")
+    def create_date(self):
+        return self.created_date()
+
+    @property
+    def created_date_from_actions(self):
+        """Return the creation date of the card by parsing the card actions.
+
+        This may fail if the card has more than 1000 actions.
+        """
+        # XXX this steps on self.actions
+        self.fetch_actions('createCard')
+        if not self.actions:
+            # The creation action differs if the card was created from a checklist item.
+            self.fetch_actions('convertToCardFromCheckItem')
+        date_str = self.actions[0]['date']
+        return dateparser.parse(date_str)
+
+    @deprecate('Use created_date()')
+    def card_created_date(self):
+        return self.created_date()
 
     @property
     def due_date(self):
